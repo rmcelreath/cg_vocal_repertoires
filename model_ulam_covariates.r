@@ -80,6 +80,9 @@ dat_list <- list(
     sex=sex
 )
 
+# random group label
+dat_list$group <- sample(1:2,size=N,replace=TRUE)
+
 m0u <- ulam(
     alist(
         # Y > 0
@@ -91,18 +94,37 @@ m0u <- ulam(
          ) ),
         # models for rate of behavior and prob possess behavior
         log_lambda1 <- log(L[BID]) + log(D[J]),
-        save> logit(p) <- a[BID] + B[age[ID],sex[ID]],
+        save> logit(p) <- a[BID,group[ID]] + B[age[ID],sex[ID]],
         # priors
         vector[M]:L ~ exponential(1),
-        vector[M]:a ~ normal(0,1),
+        matrix[M,2]:a ~ normal(0,1),
         matrix[3,2]:B ~ normal(0,0.5)
     ), data=dat_list , chains=4 , cores=4 , sample=TRUE , iter=500 )
 
 precis(m0u,3,pars=c("B"))
 
-r <- Rcalc(m0u,S=1000)
+
+# compute probability of each vocalization for each age,sex combination
+post <- extract.samples(m0u)
+S <- 1000
+gid <- 1
+
+p_age_sex <- array(NA,c(S,dat_list$M,3,2)) # sample,vocalization,age,sex
+for ( age in 1:3 ) for ( sex in 1:2 ) for ( v in 1:dat_list$M ) {
+    p_age_sex[,v,age,sex] <- sapply( 1:S , function(s) with(post,
+        inv_logit( a[s,v,gid] + B[s,age,sex] )
+    ))
+}
+
+# plot age groups for specific sex
+plot(NULL,xlim=c(1,dat_list$M),ylim=c(0,1),xlab="vocalization",ylab="probability")
+p_mean <- apply(p_age_sex,2:4,mean)
+the_sex <- 1
+for ( a in 1:3 ) points( 1:dat_list$M , p_mean[,a,the_sex] , col=a , pch=16 )
+
 
 # compare estimated repertoire size to observed
+r <- Rcalc(m0u,S=1000)
 Robs = rep(0,dat$N)
 Rtrue = rep(0,dat$N)
 for ( i in 1:dat$N ) {
