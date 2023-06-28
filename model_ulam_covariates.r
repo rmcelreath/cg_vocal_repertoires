@@ -94,11 +94,11 @@ m0u <- ulam(
          ) ),
         # models for rate of behavior and prob possess behavior
         log_lambda1 <- log(L[BID]) + log(D[J]),
-        save> logit(p) <- a[BID,group[ID]] + B[age[ID],sex[ID]],
+        save> logit(p) <- a[BID,group[ID]] + B[age[ID],sex[ID],group[ID]],
         # priors
         vector[M]:L ~ exponential(1),
         matrix[M,2]:a ~ normal(0,1),
-        matrix[3,2]:B ~ normal(0,0.5)
+        real["3,2,2"]:B ~ normal(0,0.5)
     ), data=dat_list , chains=4 , cores=4 , sample=TRUE , iter=500 )
 
 precis(m0u,3,pars=c("B"))
@@ -106,13 +106,13 @@ precis(m0u,3,pars=c("B"))
 
 # compute probability of each vocalization for each age,sex combination
 post <- extract.samples(m0u)
-S <- 1000
-gid <- 1
+S <- 1000 # number of samples
+gid <- 1 # which group you want to plot
 
 p_age_sex <- array(NA,c(S,dat_list$M,3,2)) # sample,vocalization,age,sex
 for ( age in 1:3 ) for ( sex in 1:2 ) for ( v in 1:dat_list$M ) {
     p_age_sex[,v,age,sex] <- sapply( 1:S , function(s) with(post,
-        inv_logit( a[s,v,gid] + B[s,age,sex] )
+        inv_logit( a[s,v,gid] + B[s,age,sex,gid] )
     ))
 }
 
