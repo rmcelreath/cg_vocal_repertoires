@@ -119,11 +119,31 @@ for ( age in 1:3 ) for ( sex in 1:2 ) for ( v in 1:dat_list$M ) {
 # plot age groups for specific sex
 plot(NULL,xlim=c(1,dat_list$M),ylim=c(0,1),xlab="vocalization",ylab="probability")
 p_mean <- apply(p_age_sex,2:4,mean)
+p_ci <- apply(p_age_sex,2:4,PI,prob=0.89)
 the_sex <- 1
 for ( a in 1:3 ) points( 1:dat_list$M , p_mean[,a,the_sex] , col=a , pch=16 )
+# intervals for age group 1 as example
+the_age <- 1
+for ( v in 1:dat_list$M ) lines( c(v,v) , p_ci[,v,the_age,the_sex] , col=the_age )
 
+# repertoire sizes for each age,sex
+rep_age_sex <- array(NA,c(S,3,2))
+for ( age in 1:3 ) for ( sex in 1:2 ) for ( s in 1:S ) {
+    rep_age_sex[s,age,sex] <- sum( p_age_sex[s,,age,sex] )
+}
+apply( rep_age_sex , 2:3 , mean )
 
-# compare estimated repertoire size to observed
+# calculate distribution of longest vocalization (sequence) for each age,sex
+# vector of sequence lengths
+vlen <- 1:dat_list$M # replace with real data
+maxlen_age_sex <- array(NA,c(S,3,2))
+for ( age in 1:3 ) for ( sex in 1:2 ) for ( s in 1:S ) {
+    x <- rbern( dat_list$M , p_age_sex[s,,age,sex] ) # random realization of repertoire
+    maxlen_age_sex[s,age,sex] <- max( vlen * x )
+}
+apply( maxlen_age_sex , 2:3 , mean )
+
+# compare estimated repertoire size to observed - for actual individuals in sample
 r <- Rcalc(m0u,S=1000)
 Robs = rep(0,dat$N)
 Rtrue = rep(0,dat$N)
