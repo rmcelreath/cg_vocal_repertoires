@@ -115,6 +115,10 @@ sim_repertoire <- function(
     return(dat)
 }
 
+# tests below
+
+if (FALSE) {
+
 ################################################################################
 # estimate - basic no covariate model
 
@@ -386,3 +390,6 @@ prior$gamma <- rexp(S,2) + 1
 
 plot(NULL,xlim=c(0,1),ylim=c(0,1),xlab="age",ylab="prob in repertoire")
 for ( i in 1:S ) with( prior , curve( alpha[i]*(1-exp(-beta[i]*x))^gamma[i] , add=TRUE , lwd=2 ) )
+
+}
+# END TESTS
