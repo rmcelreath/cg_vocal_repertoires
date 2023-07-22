@@ -47,7 +47,7 @@ age <- sample(1:3,size=N,replace=TRUE)
 sex <- sample(1:2,size=N,replace=TRUE)
 vlength <- standardize(log(1:M)) # lengths of each vocalization
 #p_base <- rbeta(M,2,2) # model without length
-p_base <- inv_logit( 0 + vlength )
+p_base <- inv_logit( 0 - vlength )
 p_sim <- matrix(NA,nrow=N,ncol=M)
 for ( n in 1:N ) {
     p_sim[n,] <- inv_logit(
