@@ -45,7 +45,9 @@ N <- 50
 M <- 50
 age <- sample(1:3,size=N,replace=TRUE)
 sex <- sample(1:2,size=N,replace=TRUE)
-p_base <- rbeta(M,2,2)
+vlength <- standardize(log(1:M)) # lengths of each vocalization
+#p_base <- rbeta(M,2,2) # model without length
+p_base <- inv_logit( 0 + vlength )
 p_sim <- matrix(NA,nrow=N,ncol=M)
 for ( n in 1:N ) {
     p_sim[n,] <- inv_logit(
@@ -77,7 +79,8 @@ dat_list <- list(
     D = dat$d, # duration of recording,
     M = max(MM),
     age=age,
-    sex=sex
+    sex=sex,
+    vlen=vlength
 )
 
 # random group label
@@ -94,25 +97,40 @@ m0u <- ulam(
          ) ),
         # models for rate of behavior and prob possess behavior
         log_lambda1 <- log(L[BID]) + log(D[J]),
-        save> logit(p) <- a[BID,group[ID]] + B[age[ID],sex[ID],group[ID]],
+        save> logit(p) <- 
+            # vocialization intercepts for each group
+            a_mean[BID] + a[BID,group[ID]]*sigma + 
+            # age-sex offsets for each group
+            B_mean[age[ID],sex[ID]] + B[age[ID],sex[ID],group[ID]]*tau + 
+            # association of vocalization length with intercept
+            bvl*vlen[BID],
         # priors
+        bvl ~ normal(0,1),
         vector[M]:L ~ exponential(1),
+        vector[M]:a_mean ~ normal(0,1),
         matrix[M,2]:a ~ normal(0,1),
-        real["3,2,2"]:B ~ normal(0,0.5)
+        matrix[3,2]:B_mean ~ normal(0,1),
+        real["3,2,2"]:B ~ normal(0,1),
+        c(sigma,tau) ~ exponential(1)
     ), data=dat_list , chains=4 , cores=4 , sample=TRUE , iter=500 )
 
-precis(m0u,3,pars=c("B"))
+precis(m0u,3,pars=c("a_mean","B","sigma","tau","bvl"))
 
 
 # compute probability of each vocalization for each age,sex combination
 post <- extract.samples(m0u)
+
 S <- 1000 # number of samples
 gid <- 1 # which group you want to plot
 
 p_age_sex <- array(NA,c(S,dat_list$M,3,2)) # sample,vocalization,age,sex
 for ( age in 1:3 ) for ( sex in 1:2 ) for ( v in 1:dat_list$M ) {
     p_age_sex[,v,age,sex] <- sapply( 1:S , function(s) with(post,
-        inv_logit( a[s,v,gid] + B[s,age,sex,gid] )
+        inv_logit( 
+            a_mean[s,v] + a[s,v,gid]*sigma[s] + 
+            B_mean[s,age,sex] + B[s,age,sex,gid]*tau[s] +
+            bvl[s]*vlength[v]
+        )
     ))
 }
 
@@ -124,7 +142,7 @@ the_sex <- 1
 for ( a in 1:3 ) points( 1:dat_list$M , p_mean[,a,the_sex] , col=a , pch=16 )
 # intervals for age group 1 as example
 the_age <- 1
-for ( v in 1:dat_list$M ) lines( c(v,v) , p_ci[,v,the_age,the_sex] , col=the_age )
+# for ( v in 1:dat_list$M ) lines( c(v,v) , p_ci[,v,the_age,the_sex] , col=the_age )
 
 # repertoire sizes for each age,sex
 rep_age_sex <- array(NA,c(S,3,2))
